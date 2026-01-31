@@ -1,0 +1,23 @@
+# Ignore source TypeScript files
+src/*.ts
+src/**/*.ts
+
+# But keep templates (they're copied to dist anyway, but just in case)
+!src/templates/
+
+# Ignore build info
+tsconfig.tsbuildinfo
+
+# Ignore lock files
+bun.lockb
+bun.lock
+
+# Aider
+.aider*
+
+# npm
+.npmrc
+
+# Git
+.git/
+.gitignore

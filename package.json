@@ -1,0 +1,41 @@
+{
+  "name": "simpledi-app-generator",
+  "version": "0.0.1",
+  "description": "generates a @kanian77/simple-di app",
+  "author": {
+    "name": "Patrick Assoa Adou",
+    "email": "kanian77@gmail.com"
+  },
+  "module": "src/index.ts",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "simpledi": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/cli.js",
+      "require": "./dist/cli.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/*": {
+      "import": "./dist/*.js",
+      "require": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.tsbuildinfo",
+    "build": "tsc --build --verbose",
+    "copy-templates": "cp -r src/templates dist/templates",
+    "dev": "tsc --build --verbose --watch",
+    "prepare": "bun run clean && bun run build && bun run copy-templates",
+    "release": "bun run prepare && npm publish --userconfig .npmrc --access public"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
