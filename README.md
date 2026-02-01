@@ -18,52 +18,38 @@ bun run prepare
 npm link
 ```
 
-## Usage
+## Commands
 
-### Create a new project
+| Command                                  | Description                          |
+| ---------------------------------------- | ------------------------------------ |
+| `simpledi new <name>`                    | Create a new simple-di project       |
+| `simpledi module <entity>`               | Generate a CRUD module for an entity |
+| `simpledi use-case <name> [imports=...]` | Generate a use case with routes      |
+
+## Quick Start
 
 ```bash
-simpledi new my-project
-cd my-project
+# Create project
+simpledi new my-app
+cd my-app
 bun install
+
+# Add your DATABASE_URL to .env.development
+# Generate entities
+simpledi module user
+simpledi module blog-post
+
+# Generate use cases
+simpledi use-case get-user imports=user
+simpledi use-case create-blog-post imports=user,blog-post
+
+# Run
 bun run dev
 ```
 
-### Generate a module
+## Documentation
 
-Inside an existing project:
-
-```bash
-simpledi module user
-simpledi module blog-post
-```
-
-This creates a complete module with:
-
-- Entity schema (Drizzle ORM)
-- Repository + Interface
-- Service + Interface
-- Module definitions
-- Test file
-- Auto-registers in `schema.ts` and `CoreModule.ts`
-
-## Prerequisites
-
-### Neon PostgreSQL
-
-Generated projects use [Neon](https://neon.tech) serverless PostgreSQL. You **must** add your connection string to `.env.development`:
-
-```env
-DATABASE_URL=postgres://user:password@your-neon-host.neon.tech/dbname?sslmode=require
-```
-
-### Required Environment Variables
-
-| Variable       | Description                       |
-| -------------- | --------------------------------- |
-| `DATABASE_URL` | Neon PostgreSQL connection string |
-| `JWT_SECRET`   | Secret key for JWT tokens         |
-| `PORT`         | Server port (default: 3000)       |
+See [user-guide.md](./user-guide.md) for complete documentation.
 
 ## Project Structure
 
@@ -77,10 +63,29 @@ my-project/
 └── src/
     ├── AppModule.ts     # Root module
     ├── schema.ts        # Drizzle schema exports
+    ├── main.routes.ts   # Route registrations
     ├── core/            # Entity modules (generated)
     ├── lib/             # Utilities, types, errors
     └── use-case/        # Use case modules
 ```
+
+## Prerequisites
+
+### Neon PostgreSQL
+
+Generated projects use [Neon](https://neon.tech) serverless PostgreSQL. Add your connection string to `.env.development`:
+
+```env
+DATABASE_URL=postgres://user:password@your-neon-host.neon.tech/dbname?sslmode=require
+```
+
+### Environment Variables
+
+| Variable       | Description                       |
+| -------------- | --------------------------------- |
+| `DATABASE_URL` | Neon PostgreSQL connection string |
+| `JWT_SECRET`   | Secret key for JWT tokens         |
+| `PORT`         | Server port (default: 3000)       |
 
 ## Tech Stack
 

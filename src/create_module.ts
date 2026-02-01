@@ -1,43 +1,14 @@
 import { mkdir, writeFile, readFile } from 'fs/promises';
 import { join, resolve } from 'path';
 import { existsSync } from 'fs';
-
-// Helper functions for string manipulation
-function toPascalCase(str: string): string {
-  return str
-    .replace(/(?:^\w|[A-Z]|\b\w)/g, (word) => word.toUpperCase())
-    .replace(/[\s-_]+/g, '');
-}
-
-function toCamelCase(str: string): string {
-  const pascal = toPascalCase(str);
-  return pascal.charAt(0).toLowerCase() + pascal.slice(1);
-}
-
-function toKebabCase(str: string): string {
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .replace(/[\s_]+/g, '-')
-    .toLowerCase();
-}
-
-function toSnakeCase(str: string): string {
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1_$2')
-    .replace(/[\s-]+/g, '_')
-    .toLowerCase();
-}
-
-function toUpperSnakeCase(str: string): string {
-  return toSnakeCase(str).toUpperCase();
-}
-
-// Simple pluralizer (naive but works for most standard English words)
-function pluralize(str: string): string {
-  if (str.endsWith('y')) return str.slice(0, -1) + 'ies';
-  if (str.endsWith('s')) return str + 'es';
-  return str + 's';
-}
+import {
+  toPascalCase,
+  toCamelCase,
+  toKebabCase,
+  toSnakeCase,
+  toUpperSnakeCase,
+  pluralize,
+} from './lib/stringUtils.js';
 
 export async function createModule(rawName: string): Promise<void> {
   if (!rawName) {

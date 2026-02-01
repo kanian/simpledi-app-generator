@@ -33,9 +33,13 @@
     "release": "bun run prepare && npm publish --userconfig .npmrc --access public"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/pluralize": "^0.0.33"
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "pluralize": "^8.0.0"
   }
 }
