@@ -30,6 +30,9 @@ export async function generateSkeleton(projectName: string): Promise<void> {
     // Root Files
     { src: 'package.json', dest: 'package.json' },
     { src: 'tsconfig.json', dest: 'tsconfig.json' },
+    { src: 'bunfig.toml', dest: 'bunfig.toml' },
+    { src: 'drizzle.dev.config.ts', dest: 'drizzle.dev.config.ts' },
+    { src: 'drizzle.prod.config.ts', dest: 'drizzle.prod.config.ts' },
     { src: '.env.development', dest: '.env.development' },
     { src: 'main.ts', dest: 'main.ts' },
 

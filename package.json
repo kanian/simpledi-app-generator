@@ -1,6 +1,6 @@
 {
   "name": "simpledi-app-generator",
-  "version": "0.0.2",
+  "version": "0.0.6",
   "description": "generates a @kanian77/simple-di app",
   "author": {
     "name": "Patrick Assoa Adou",

@@ -19,7 +19,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "@kanian77/simple-di": "^0.1.1",
+    "@kanian77/simple-di": "^0.1.2",
     "@neondatabase/serverless": "^0.10.4",
     "concurrently": "^9.1.0",
     "dotenv": "^16.4.7",
