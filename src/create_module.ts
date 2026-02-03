@@ -9,6 +9,7 @@ import {
   toUpperSnakeCase,
   pluralize,
 } from './lib/stringUtils.js';
+import { generateCrudUseCases } from './generate_crud_use_cases.js';
 
 export async function createModule(rawName: string): Promise<void> {
   if (!rawName) {
@@ -433,4 +434,7 @@ describe('${EntityName}Repository', () => {
   }
 
   console.log('\n✅ Module generation complete!');
+
+  // Generate CRUD use cases
+  await generateCrudUseCases(EntityName, entityName, kebabName, srcDir);
 }
