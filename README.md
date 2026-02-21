@@ -63,7 +63,7 @@ my-project/
 └── src/
     ├── AppModule.ts     # Root module
     ├── schema.ts        # Drizzle schema exports
-    ├── main.routes.ts   # Route registrations
+    ├── main.routes.ts   # Auto-discovers *Routes.{ts,js} files via Bun glob
     ├── core/            # Entity modules (generated)
     ├── lib/             # Utilities, types, errors
     └── use-case/        # Use case modules
@@ -76,16 +76,16 @@ my-project/
 Generated projects use [Neon](https://neon.tech) serverless PostgreSQL. Add your connection string to `.env.development`:
 
 ```env
-DATABASE_URL=postgres://user:password@your-neon-host.neon.tech/dbname?sslmode=require
+CONNECTION_STRING=postgres://user:password@your-neon-host.neon.tech/dbname?sslmode=require
 ```
 
 ### Environment Variables
 
-| Variable       | Description                       |
-| -------------- | --------------------------------- |
-| `DATABASE_URL` | Neon PostgreSQL connection string |
-| `JWT_SECRET`   | Secret key for JWT tokens         |
-| `PORT`         | Server port (default: 3000)       |
+| Variable            | Description                       |
+| ------------------- | --------------------------------- |
+| `CONNECTION_STRING` | Neon PostgreSQL connection string |
+| `JWT_SECRET`        | Secret key for JWT tokens         |
+| `PORT`              | Server port (default: 3000)       |
 
 ## Tech Stack
 

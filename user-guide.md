@@ -37,7 +37,7 @@ my-app/
 └── src/
     ├── AppModule.ts     # Root DI module
     ├── schema.ts        # Drizzle schema exports
-    ├── main.routes.ts   # Route registrations
+    ├── main.routes.ts   # Auto-discovers *Routes.{ts,js} via Bun glob
     ├── core/            # Entity modules
     │   └── CoreModule.ts
     ├── lib/             # Utilities, types, errors
@@ -46,6 +46,9 @@ my-app/
         ├── UseCaseModule.ts
         └── health-check/
 ```
+
+> [!NOTE]
+> Routes are **automatically registered** — any file matching `*Routes.{ts,js}` that exports `Route` and `Path` is picked up by the glob scanner. No manual wiring needed.
 
 ---
 
@@ -88,7 +91,7 @@ simpledi module blog-post
 - Adds export to `src/schema.ts`
 - Adds module to `src/core/CoreModule.ts`
 - Adds use case module to `src/use-case/UseCaseModule.ts`
-- Registers routes in `src/main.routes.ts`
+- Routes are auto-discovered via `main.routes.ts` glob — no manual registration required
 
 ---
 
@@ -107,25 +110,36 @@ simpledi use-case assign-role imports=user
 
 **Generated files** in `src/use-case/<name>/`:
 
-| File                       | Purpose                                                    |
-| -------------------------- | ---------------------------------------------------------- |
-| `<Name>.ts`                | Use case class with `@Service` decorator and Module export |
-| `<name>Routes.ts`          | Hono route handler                                         |
-| `outputs/<Name>Success.ts` | Typed success response + payload type                      |
-| `outputs/<Name>Failure.ts` | Typed failure response                                     |
+| File                       | Purpose                                                            |
+| -------------------------- | ------------------------------------------------------------------ |
+| `<Name>.ts`                | Use case class with `@Service` decorator and Module export         |
+| `<name>Routes.ts`          | Hono route handler — exports `Route` and `Path` for auto-discovery |
+| `outputs/<Name>Success.ts` | Typed success response + payload type                              |
+| `outputs/<Name>Failure.ts` | Typed failure response                                             |
+| `<Name>.e2e.spec.ts`       | Stub E2E test _(only when `imports=` is provided)_                 |
 
 **Auto-registration:**
 
 - Adds module to `src/use-case/UseCaseModule.ts`
-- Adds routes to `src/main.routes.ts`
+- Route is auto-discovered via `main.routes.ts` glob — no manual registration required
 
-**Imports parameter:**
+**`imports=` parameter:**
 
-When you specify `imports=user`, the generator:
+When you specify `imports=user,cohort,enrollment` the generator:
 
-1. Converts entity name to module: `user` → `UserModule`
-2. Generates import path: `@root/core/user/UserModule`
-3. Adds to the module's imports array
+1. Adds each entity's `Module` to the use case module's `imports` array
+2. Generates a ready-to-run stub E2E spec (`<Name>.e2e.spec.ts`) that:
+   - Imports each entity's `Repository` type and `*_REPOSITORY_INTERFACE` token
+   - Declares `let` variables for each repository
+   - Wires up `bootstrap()` with all modules + the use case module
+   - Calls `inject()` for each repository
+   - Cleans up schemas in **reverse** import order (dependencies last)
+   - Includes a `test('repos are defined')` smoke test to verify DI is wired correctly
+
+```bash
+# Generates EnrollStudent.e2e.spec.ts with user, cohort, enrollment repo setup
+simpledi use-case enroll-student imports=user,cohort,enrollment
+```
 
 ---
 
@@ -191,11 +205,11 @@ bun run prepare
 
 ## Environment Variables
 
-| Variable       | Description                       |
-| -------------- | --------------------------------- |
-| `DATABASE_URL` | Neon PostgreSQL connection string |
-| `JWT_SECRET`   | Secret key for JWT tokens         |
-| `PORT`         | Server port (default: 3000)       |
+| Variable            | Description                       |
+| ------------------- | --------------------------------- |
+| `CONNECTION_STRING` | Neon PostgreSQL connection string |
+| `JWT_SECRET`        | Secret key for JWT tokens         |
+| `PORT`              | Server port (default: 3000)       |
 
 ---
 

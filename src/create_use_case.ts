@@ -131,7 +131,8 @@ import { inject } from '@kanian77/simple-di';
 import { ${EntityName}, ${TOKEN_BASE}_USE_CASE_TOKEN } from './${EntityName}';
 import { ${EntityName}Failure } from './outputs/${EntityName}Failure';
 
-const ${entityName}Routes = new Hono();
+export const ${entityName}Routes = new Hono();
+export const ${entityName}RoutesPath = '/${kebabName}';
 
 ${entityName}Routes.get('/', async (c) => {
   try {
@@ -148,13 +149,105 @@ ${entityName}Routes.get('/', async (c) => {
   }
 });
 
-const ${entityName}RoutesPath = '/${kebabName}';
+export { ${entityName}Routes as Route, ${entityName}RoutesPath as Path };
+`;
 
-export { ${entityName}Routes, ${entityName}RoutesPath };
+  // 5. <EntityName>.e2e.spec.ts (Stub E2E Test)
+  const importDefs = imports.map((imp) => {
+    const pascal = toPascalCase(imp);
+    const camel = toCamelCase(imp);
+    const kebab = toKebabCase(imp);
+    const upper = toUpperSnakeCase(imp);
+    return { pascal, camel, kebab, upper };
+  });
+
+  const coreModuleImports = importDefs
+    .map(
+      (d) =>
+        `import { ${d.pascal}Module } from '@root/core/${d.kebab}/${d.pascal}Module';`,
+    )
+    .join('\n');
+
+  const repoTypeImports = importDefs
+    .map(
+      (d) =>
+        `import type { ${d.pascal}Repository } from '@root/core/${d.kebab}/${d.pascal}Repository';\nimport { ${d.upper}_REPOSITORY_INTERFACE } from '@root/core/${d.kebab}/I${d.pascal}Repository';`,
+    )
+    .join('\n');
+
+  const letDeclarations = importDefs
+    .map((d) => `  let ${d.camel}Repository: ${d.pascal}Repository;`)
+    .join('\n');
+
+  // Deletes in reverse order (dependencies last)
+  const schemaDeletes = [...importDefs]
+    .reverse()
+    .map((d) => `    await db.delete(schema.${d.camel}Schema).execute();`)
+    .join('\n');
+
+  const bootstrapModules = [
+    ...importDefs.map((d) => `          ${d.pascal}Module`),
+    `          ${EntityName}Module`,
+  ].join(',\n');
+
+  const injectCalls = importDefs
+    .map(
+      (d) =>
+        `    ${d.camel}Repository = inject(${d.upper}_REPOSITORY_INTERFACE);`,
+    )
+    .join('\n');
+
+  const smokeAssertions = importDefs
+    .map((d) => `    expect(${d.camel}Repository).toBeDefined();`)
+    .join('\n');
+
+  const specContent = `import { afterAll, afterEach, beforeAll, describe, expect, test } from 'bun:test';
+import { inject, bootstrap, Module } from '@kanian77/simple-di';
+import { getDb } from 'db/getDb';
+import * as schema from '@root/schema';
+${coreModuleImports}
+import { getDbModule } from 'db/getDbModule';
+import { getConfigModule } from 'config/getConfigModule';
+import { EnvFileNames } from '@root/lib';
+import { ${EntityName}Module } from './${EntityName}';
+${repoTypeImports}
+
+describe('${EntityName} Use Case', () => {
+${letDeclarations}
+
+  const clear = async (db: ReturnType<typeof getDb>) => {
+${schemaDeletes}
+  };
+
+  beforeAll(async () => {
+    bootstrap(
+      new Module({
+        imports: [
+          getConfigModule(EnvFileNames.TESTING),
+          getDbModule(EnvFileNames.TESTING),
+${bootstrapModules},
+        ],
+      }),
+    );
+${injectCalls}
+  });
+
+  afterEach(async () => {
+    await clear(getDb());
+  });
+
+  afterAll(async () => {
+    await clear(getDb());
+  });
+
+  test('repos are defined', async () => {
+${smokeAssertions}
+  });
+});
 `;
 
   // Write files
-  const files = [
+  const files: { path: string; content: string }[] = [
     {
       path: join(outputsDir, `${EntityName}Success.ts`),
       content: successContent,
@@ -166,6 +259,13 @@ export { ${entityName}Routes, ${entityName}RoutesPath };
     { path: join(targetDir, `${EntityName}.ts`), content: useCaseContent },
     { path: join(targetDir, `${entityName}Routes.ts`), content: routesContent },
   ];
+
+  if (imports.length > 0) {
+    files.push({
+      path: join(targetDir, `${EntityName}.e2e.spec.ts`),
+      content: specContent,
+    });
+  }
 
   for (const file of files) {
     await writeFile(file.path, file.content);
@@ -229,67 +329,6 @@ export { ${entityName}Routes, ${entityName}RoutesPath };
     }
   } else {
     console.warn('Warning: src/use-case/UseCaseModule.ts not found');
-  }
-
-  // 2. src/main.routes.ts
-  const mainRoutesPath = join(srcDir, 'main.routes.ts');
-  if (existsSync(mainRoutesPath)) {
-    let content = await readFile(mainRoutesPath, 'utf8');
-    const importStatement = `import {\n  ${entityName}Routes,\n  ${entityName}RoutesPath,\n} from './use-case/${kebabName}/${entityName}Routes';`;
-
-    if (!content.includes(`${entityName}Routes`)) {
-      // Add import after last import
-      const lastImportIndex = content.lastIndexOf('import ');
-      if (lastImportIndex !== -1) {
-        // Find the end of this import (could be multi-line)
-        let searchPos = lastImportIndex;
-        let importEndIndex = -1;
-
-        // Look for the semicolon that ends the import
-        while (searchPos < content.length) {
-          if (content[searchPos] === ';') {
-            importEndIndex = searchPos;
-            break;
-          }
-          searchPos++;
-        }
-
-        if (importEndIndex !== -1) {
-          content =
-            content.slice(0, importEndIndex + 1) +
-            '\n' +
-            importStatement +
-            content.slice(importEndIndex + 1);
-        }
-      } else {
-        content = importStatement + '\n' + content;
-      }
-
-      // Add route registration before export
-      const routeRegistration = `mainRoutes.route(${entityName}RoutesPath, ${entityName}Routes);`;
-
-      if (!content.includes(routeRegistration)) {
-        // Find line before 'export { mainRoutes }'
-        const exportIndex = content.indexOf('export { mainRoutes }');
-        if (exportIndex !== -1) {
-          content =
-            content.slice(0, exportIndex) +
-            routeRegistration +
-            '\n\n' +
-            content.slice(exportIndex);
-        } else {
-          // Fallback: add before last line
-          const lines = content.split('\n');
-          lines.splice(lines.length - 1, 0, routeRegistration);
-          content = lines.join('\n');
-        }
-      }
-
-      await writeFile(mainRoutesPath, content);
-      console.log(`Updated: src/main.routes.ts`);
-    }
-  } else {
-    console.warn('Warning: src/main.routes.ts not found');
   }
 
   console.log('\n✅ Use case generation complete!');
