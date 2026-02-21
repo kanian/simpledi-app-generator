@@ -120,11 +120,47 @@ export async function generateSkeleton(projectName: string): Promise<void> {
       src: 'src/lib/types/getCorsOrigin.ts',
       dest: 'src/lib/types/getCorsOrigin.ts',
     },
+    {
+      src: 'src/lib/types/UserRoleEnum.ts',
+      dest: 'src/lib/types/UserRoleEnum.ts',
+    },
+    {
+      src: 'src/lib/types/UserTypeEnum.ts',
+      dest: 'src/lib/types/UserTypeEnum.ts',
+    },
+    {
+      src: 'src/lib/types/AdminRoleEnum.ts',
+      dest: 'src/lib/types/AdminRoleEnum.ts',
+    },
+    {
+      src: 'src/lib/types/AnyRoleEnum.ts',
+      dest: 'src/lib/types/AnyRoleEnum.ts',
+    },
+    {
+      src: 'src/lib/types/PhoneNumberTypeEnum.ts',
+      dest: 'src/lib/types/PhoneNumberTypeEnum.ts',
+    },
+    {
+      src: 'src/lib/types/PhoneNumberInterface.ts',
+      dest: 'src/lib/types/PhoneNumberInterface.ts',
+    },
+    {
+      src: 'src/lib/types/UserRolePgEnum.ts',
+      dest: 'src/lib/types/UserRolePgEnum.ts',
+    },
+    {
+      src: 'src/lib/types/UserTypePgEnum.ts',
+      dest: 'src/lib/types/UserTypePgEnum.ts',
+    },
 
     // Lib - Functions
     {
       src: 'src/lib/functions/getEnvFile.ts',
       dest: 'src/lib/functions/getEnvFile.ts',
+    },
+    {
+      src: 'src/lib/functions/getContextUser.ts',
+      dest: 'src/lib/functions/getContextUser.ts',
     },
     {
       src: 'src/lib/functions/getHostname.ts',
@@ -141,6 +177,32 @@ export async function generateSkeleton(projectName: string): Promise<void> {
     {
       src: 'src/lib/functions/withBaseSchema.ts',
       dest: 'src/lib/functions/withBaseSchema.ts',
+    },
+    // Lib - Functions/test-related
+    {
+      src: 'src/lib/functions/test-related/getTestServer.ts',
+      dest: 'src/lib/functions/test-related/getTestServer.ts',
+    },
+    {
+      src: 'src/lib/functions/test-related/getNewTestServer.ts',
+      dest: 'src/lib/functions/test-related/getNewTestServer.ts',
+    },
+    {
+      src: 'src/lib/functions/test-related/createSignedUpUser.ts',
+      dest: 'src/lib/functions/test-related/createSignedUpUser.ts',
+    },
+    {
+      src: 'src/lib/functions/test-related/getOneUserSignupData.ts',
+      dest: 'src/lib/functions/test-related/getOneUserSignupData.ts',
+    },
+    // Middlewares
+    {
+      src: 'src/middlewares/authGuard.ts',
+      dest: 'src/middlewares/authGuard.ts',
+    },
+    {
+      src: 'src/middlewares/roleGuard.ts',
+      dest: 'src/middlewares/roleGuard.ts',
     },
 
     // Lib - Errors
@@ -178,10 +240,24 @@ export async function generateSkeleton(projectName: string): Promise<void> {
       src: 'src/lib/AuthenticationUtils.ts',
       dest: 'src/lib/AuthenticationUtils.ts',
     },
+
+    // Lib - Schemas
+    {
+      src: 'src/lib/schemas/phoneNumberSchema.ts',
+      dest: 'src/lib/schemas/phoneNumberSchema.ts',
+    },
     // Core
     {
       src: 'src/core/baseSchema.ts',
       dest: 'src/core/baseSchema.ts',
+    },
+    {
+      src: 'src/core/baseZodSchema.ts',
+      dest: 'src/core/baseZodSchema.ts',
+    },
+    {
+      src: 'src/core/user',
+      dest: 'src/core/user',
     },
   ];
 
@@ -197,7 +273,7 @@ export async function generateSkeleton(projectName: string): Promise<void> {
     }
 
     if (existsSync(srcPath)) {
-      await cp(srcPath, destPath);
+      await cp(srcPath, destPath, { recursive: true });
       console.log(`Created ${tpl.dest}`);
     } else {
       console.error(`Error: Template ${tpl.src} not found at ${srcPath}`);
@@ -208,10 +284,15 @@ export async function generateSkeleton(projectName: string): Promise<void> {
     await applyTemplate(tpl);
   }
 
-  // Generate Indices
   const libTypesDest = join(targetDir, 'src/lib/types');
+  const libSchemasDest = join(targetDir, 'src/lib/schemas');
   const libFunctionsDest = join(targetDir, 'src/lib/functions');
+  const libTestFunctionsDest = join(
+    targetDir,
+    'src/lib/functions/test-related',
+  );
   const libErrorsDest = join(targetDir, 'src/lib/errors');
+  const middlewaresDest = join(targetDir, 'src/middlewares');
   const libDest = join(targetDir, 'src/lib');
   const coreDir = join(targetDir, 'src/core');
 
@@ -230,12 +311,16 @@ export async function generateSkeleton(projectName: string): Promise<void> {
   };
 
   await createIndex(libTypesDest);
+  await createIndex(libSchemasDest);
   await createIndex(libFunctionsDest);
+  await createIndex(libTestFunctionsDest);
   await createIndex(libErrorsDest);
+  await createIndex(middlewaresDest);
 
   // lib/index.ts
   const libIndexContent = `export * from "./functions";
 export * from "./types";
+export * from "./schemas";
 export * from "./errors";`;
   await writeFile(join(libDest, 'index.ts'), libIndexContent);
   console.log('Created lib/index.ts');
@@ -244,11 +329,13 @@ export * from "./errors";`;
   const coreModuleContent = `import { Module } from '@kanian77/simple-di';
 import { getConfigModule } from 'config/getConfigModule';
 import { getDbModule } from 'db/getDbModule';
+import { UserModule } from './user/UserModule';
 
 export const CoreModule = new Module({
   imports: [
     getConfigModule(),
     getDbModule(),
+    UserModule,
   ],
 });
 `;

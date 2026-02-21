@@ -6,7 +6,7 @@ import { Service } from '@kanian77/simple-di';
 export const CONFIG = 'Config';
 @Service({ token: CONFIG })
 export class Config {
-  private _server?: Server | undefined;
+  private _server?: Server<any> | undefined;
 
   private configLoaded: boolean = false;
   private _loadedEnvFile?: EnvFileNames;
@@ -23,11 +23,11 @@ export class Config {
     this._jwtSecret = process.env.JWT_SECRET ?? 'undefined';
   }
 
-  set server(s: Server) {
+  set server(s: Server<any>) {
     this._server = this.server;
   }
 
-  get server(): Server | undefined {
+  get server(): Server<any> | undefined {
     return this._server;
   }
 

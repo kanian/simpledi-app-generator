@@ -13,15 +13,14 @@ simpledi - Simple DI App Generator
 
 Usage:
   simpledi new <project-name>                        Create a new simple-di project
-  simpledi module <entity-name>                      Generate a module in current project
+  simpledi module <entity-name>                      Generate a module with CRUD use cases
   simpledi use-case <name> [imports=mod1,mod2,...]   Generate a use case in current project
 
 Examples:
   simpledi new my-app
   simpledi module user
-  simpledi module blog-post
-  simpledi use-case get-user
-  simpledi use-case create-user imports=CoreModule,ConfigModule
+  simpledi use-case get-dashboard-stats
+  simpledi use-case publish-post imports=blog-post
 `);
 }
 

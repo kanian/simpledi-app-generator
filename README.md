@@ -20,11 +20,11 @@ npm link
 
 ## Commands
 
-| Command                                  | Description                          |
-| ---------------------------------------- | ------------------------------------ |
-| `simpledi new <name>`                    | Create a new simple-di project       |
-| `simpledi module <entity>`               | Generate a CRUD module for an entity |
-| `simpledi use-case <name> [imports=...]` | Generate a use case with routes      |
+| Command                                  | Description                           |
+| ---------------------------------------- | ------------------------------------- |
+| `simpledi new <name>`                    | Create a new simple-di project        |
+| `simpledi module <entity>`               | Generate a module with CRUD use cases |
+| `simpledi use-case <name> [imports=...]` | Generate a use case with routes       |
 
 ## Quick Start
 
@@ -35,13 +35,13 @@ cd my-app
 bun install
 
 # Add your DATABASE_URL to .env.development
-# Generate entities
+# Generate entities (includes CRUD use cases!)
 simpledi module user
 simpledi module blog-post
 
-# Generate use cases
-simpledi use-case get-user imports=user
-simpledi use-case create-blog-post imports=user,blog-post
+# Generate custom use cases
+simpledi use-case get-dashboard-stats imports=user,blog-post
+simpledi use-case publish-post imports=blog-post
 
 # Run
 bun run dev

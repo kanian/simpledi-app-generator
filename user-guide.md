@@ -73,24 +73,36 @@ simpledi module blog-post
 | `<Entity>Module.ts`           | Main module (combines all)      |
 | `<Entity>Repository.spec.ts`  | Test file                       |
 
+**Generated Use Cases** in `src/use-case/<entity-name>/`:
+
+| Use Case         | Route  | Method   |
+| ---------------- | ------ | -------- |
+| `Create<Entity>` | `/`    | `POST`   |
+| `Update<Entity>` | `/:id` | `PUT`    |
+| `Get<Entity>`    | `/:id` | `GET`    |
+| `List<Entity>s`  | `/`    | `GET`    |
+| `Delete<Entity>` | `/:id` | `DELETE` |
+
 **Auto-registration:**
 
 - Adds export to `src/schema.ts`
 - Adds module to `src/core/CoreModule.ts`
+- Adds use case module to `src/use-case/UseCaseModule.ts`
+- Registers routes in `src/main.routes.ts`
 
 ---
 
 ### `simpledi use-case <name> [imports=entity1,entity2,...]`
 
-Generates a use case with routes and typed outputs.
+Generates a custom use case with routes and typed outputs.
 
 ```bash
 # Simple use case
-simpledi use-case get-user
+simpledi use-case get-dashboard-stats
 
 # Use case with module imports
-simpledi use-case get-user imports=user
-simpledi use-case create-blog-post imports=user,blog-post
+simpledi use-case publish-post imports=blog-post
+simpledi use-case assign-role imports=user
 ```
 
 **Generated files** in `src/use-case/<name>/`:

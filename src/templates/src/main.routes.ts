@@ -1,11 +1,25 @@
 import { Hono } from 'hono';
-import {
-  healthCheckRoutes,
-  healthCheckRoutesPath,
-} from './use-case/health-check/healthCheckRoutes';
+import { join, dirname } from 'path';
 
-const mainRoutes = new Hono();
+import { fileURLToPath } from 'url';
 
-mainRoutes.route(healthCheckRoutesPath, healthCheckRoutes);
+export const addRoutes = async (app: Hono): Promise<void> => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const useCasesDir = join(__dirname, 'use-case');
+  const routeFiles: string[] = [];
 
-export { mainRoutes };
+  const glob = new Bun.Glob('**/*Routes.{ts,js}');
+  for await (const file of glob.scan({ cwd: useCasesDir })) {
+    routeFiles.push(join(useCasesDir, file));
+  }
+
+  for (const filePath of routeFiles) {
+    const routeModule = await import(filePath);
+
+    if (routeModule.Route && routeModule.Path) {
+      console.log(`Registering route: ${routeModule.Path}`);
+      app.route(routeModule.Path, routeModule.Route);
+    }
+  }
+};

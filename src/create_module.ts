@@ -79,8 +79,11 @@ export type ${EntityName}SchemaType = typeof ${entityName}Schema;
 // Zod validation schemas
 export const ${EntityName}InsertSchema = createInsertSchema(${entityName}Schema).merge(
   baseZod${EntityName}Schema.partial({
+    id: true,
     createdAt: true,
+    createdBy: true,
     updatedAt: true,
+    updatedBy: true,
     deletedAt: true,
     deleted: true,
   })

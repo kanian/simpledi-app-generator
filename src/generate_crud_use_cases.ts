@@ -50,9 +50,15 @@ export async function generateCrudUseCases(
   // Generate aggregator module
   await generateUseCaseAggregatorModule(useCaseBaseDir, config);
 
-  // Auto-register in UseCaseModule.ts and main.routes.ts
+  // Auto-register in UseCaseModule.ts
   await registerInUseCaseModule(srcDir, config);
-  await registerRoutes(srcDir, config);
+
+  // Phase 3: Generate Scaffolded E2E Tests
+  await generateCreateE2ETest(useCaseBaseDir, config);
+  await generateUpdateE2ETest(useCaseBaseDir, config);
+  await generateGetE2ETest(useCaseBaseDir, config);
+  await generateListE2ETest(useCaseBaseDir, config);
+  await generateDeleteE2ETest(useCaseBaseDir, config);
 
   console.log(`\n✅ CRUD use cases generated for ${EntityName}!`);
 }
@@ -62,7 +68,7 @@ async function generateCreateUseCase(
   baseDir: string,
   config: CrudConfig,
 ): Promise<void> {
-  const { EntityName, entityName, kebabName, TOKEN_BASE } = config;
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
   const useCaseName = `Create${EntityName}`;
   const useCaseDir = join(baseDir, `create-${kebabName}`);
   const inputsDir = join(useCaseDir, 'inputs');
@@ -148,28 +154,42 @@ import { StatusCodes } from 'http-status-codes';
 import { inject } from '@kanian77/simple-di';
 import { ${useCaseName}, ${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN } from './${useCaseName}';
 import { ${useCaseName}Failure } from './outputs/${useCaseName}Failure';
-import type { ${useCaseName}Input } from './inputs/${useCaseName}Input';
+import { ${EntityName}InsertSchema } from '@root/core/${kebabName}/${EntityName}';
+import { getContextUser } from '@root/lib/functions/getContextUser';
+import { authGuard } from '@root/middlewares/authGuard';
+import { roleGuard } from '@root/middlewares/roleGuard';
+import { AdminRoleEnum } from '@root/lib';
 
-const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}RoutesPath = '/${pluralKebab}';
 
-${toCamelCase(useCaseName)}Routes.post('/', async (c) => {
-  try {
-    const input = await c.req.json<${useCaseName}Input>();
-    const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
-    const result = await useCase.execute(input);
-    return c.json(result, StatusCodes.CREATED);
-  } catch (e) {
-    console.error('Error in ${toCamelCase(useCaseName)}Routes:', e);
-    return c.json(
-      new ${useCaseName}Failure('Internal Server Error'),
-      StatusCodes.INTERNAL_SERVER_ERROR,
-    );
+${toCamelCase(useCaseName)}Routes.post(
+  '/',
+  authGuard(),
+  roleGuard([AdminRoleEnum.ADMIN]),
+  async (c) => {
+    try {
+      const rawInput = await c.req.json();
+      const user = getContextUser(c);
+      if (user) {
+        rawInput.createdBy = user.id;
+      }
+
+      const input = ${EntityName}InsertSchema.parse(rawInput);
+      const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
+      const result = await useCase.execute(input);
+      return c.json(result, StatusCodes.CREATED);
+    } catch (e) {
+      console.error('Error in ${toCamelCase(useCaseName)}Routes:', e);
+      return c.json(
+        new ${useCaseName}Failure('Internal Server Error'),
+        StatusCodes.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
-});
+);
 
-const ${toCamelCase(useCaseName)}RoutesPath = '/';
-
-export { ${toCamelCase(useCaseName)}Routes, ${toCamelCase(useCaseName)}RoutesPath };
+export { ${toCamelCase(useCaseName)}Routes as Route, ${toCamelCase(useCaseName)}RoutesPath as Path };
 `;
 
   await writeFile(join(inputsDir, `${useCaseName}Input.ts`), inputContent);
@@ -188,7 +208,7 @@ async function generateUpdateUseCase(
   baseDir: string,
   config: CrudConfig,
 ): Promise<void> {
-  const { EntityName, entityName, kebabName, TOKEN_BASE } = config;
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
   const useCaseName = `Update${EntityName}`;
   const useCaseDir = join(baseDir, `update-${kebabName}`);
   const inputsDir = join(useCaseDir, 'inputs');
@@ -278,29 +298,45 @@ import { inject } from '@kanian77/simple-di';
 import { ${useCaseName}, ${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN } from './${useCaseName}';
 import { ${useCaseName}Failure } from './outputs/${useCaseName}Failure';
 import type { ${useCaseName}Input } from './inputs/${useCaseName}Input';
+import { ${EntityName}UpdateSchema } from '@root/core/${kebabName}/${EntityName}';
+import { getContextUser } from '@root/lib/functions/getContextUser';
+import { authGuard } from '@root/middlewares/authGuard';
+import { roleGuard } from '@root/middlewares/roleGuard';
+import { AdminRoleEnum } from '@root/lib';
 
-const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}RoutesPath = '/${pluralKebab}/:id';
 
-${toCamelCase(useCaseName)}Routes.put('/:id', async (c) => {
-  try {
-    const id = c.req.param('id');
-    const data = await c.req.json();
-    const input: ${useCaseName}Input = { id, data };
-    const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
-    const result = await useCase.execute(input);
-    return c.json(result, StatusCodes.OK);
-  } catch (e) {
-    console.error('Error in ${toCamelCase(useCaseName)}Routes:', e);
-    return c.json(
-      new ${useCaseName}Failure('Internal Server Error'),
-      StatusCodes.INTERNAL_SERVER_ERROR,
-    );
+${toCamelCase(useCaseName)}Routes.put(
+  '/',
+  authGuard(),
+  roleGuard([AdminRoleEnum.ADMIN]),
+  async (c) => {
+    try {
+      const id = c.req.param('id');
+      const rawBody = await c.req.json();
+
+      const user = getContextUser(c);
+      if (user) {
+        rawBody.updatedBy = user.id;
+      }
+
+      const data = ${EntityName}UpdateSchema.parse(rawBody);
+      const input: ${useCaseName}Input = { id, data };
+      const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
+      const result = await useCase.execute(input);
+      return c.json(result, StatusCodes.OK);
+    } catch (e) {
+      console.error('Error in ${toCamelCase(useCaseName)}Routes:', e);
+      return c.json(
+        new ${useCaseName}Failure('Internal Server Error'),
+        StatusCodes.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
-});
+);
 
-const ${toCamelCase(useCaseName)}RoutesPath = '/';
-
-export { ${toCamelCase(useCaseName)}Routes, ${toCamelCase(useCaseName)}RoutesPath };
+export { ${toCamelCase(useCaseName)}Routes as Route, ${toCamelCase(useCaseName)}RoutesPath as Path };
 `;
 
   await writeFile(join(inputsDir, `${useCaseName}Input.ts`), inputContent);
@@ -319,7 +355,7 @@ async function generateGetUseCase(
   baseDir: string,
   config: CrudConfig,
 ): Promise<void> {
-  const { EntityName, entityName, kebabName, TOKEN_BASE } = config;
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
   const useCaseName = `Get${EntityName}`;
   const useCaseDir = join(baseDir, `get-${kebabName}`);
   const outputsDir = join(useCaseDir, 'outputs');
@@ -397,9 +433,10 @@ import { inject } from '@kanian77/simple-di';
 import { ${useCaseName}, ${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN } from './${useCaseName}';
 import { ${useCaseName}Failure } from './outputs/${useCaseName}Failure';
 
-const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}RoutesPath = '/${pluralKebab}/:id';
 
-${toCamelCase(useCaseName)}Routes.get('/:id', async (c) => {
+${toCamelCase(useCaseName)}Routes.get('/', async (c) => {
   try {
     const id = c.req.param('id');
     const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
@@ -414,9 +451,7 @@ ${toCamelCase(useCaseName)}Routes.get('/:id', async (c) => {
   }
 });
 
-const ${toCamelCase(useCaseName)}RoutesPath = '/';
-
-export { ${toCamelCase(useCaseName)}Routes, ${toCamelCase(useCaseName)}RoutesPath };
+export { ${toCamelCase(useCaseName)}Routes as Route, ${toCamelCase(useCaseName)}RoutesPath as Path };
 `;
 
   await writeFile(join(outputsDir, `${useCaseName}Success.ts`), successContent);
@@ -434,8 +469,14 @@ async function generateListUseCase(
   baseDir: string,
   config: CrudConfig,
 ): Promise<void> {
-  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralPascal } =
-    config;
+  const {
+    EntityName,
+    entityName,
+    kebabName,
+    TOKEN_BASE,
+    pluralPascal,
+    pluralKebab,
+  } = config;
   const useCaseName = `List${pluralPascal}`;
   const useCaseDir = join(baseDir, `list-${config.pluralKebab}`);
   const outputsDir = join(useCaseDir, 'outputs');
@@ -513,7 +554,8 @@ import { inject } from '@kanian77/simple-di';
 import { ${useCaseName}, ${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN } from './${useCaseName}';
 import { ${useCaseName}Failure } from './outputs/${useCaseName}Failure';
 
-const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}RoutesPath = '/${pluralKebab}';
 
 ${toCamelCase(useCaseName)}Routes.get('/', async (c) => {
   try {
@@ -529,9 +571,7 @@ ${toCamelCase(useCaseName)}Routes.get('/', async (c) => {
   }
 });
 
-const ${toCamelCase(useCaseName)}RoutesPath = '/';
-
-export { ${toCamelCase(useCaseName)}Routes, ${toCamelCase(useCaseName)}RoutesPath };
+export { ${toCamelCase(useCaseName)}Routes as Route, ${toCamelCase(useCaseName)}RoutesPath as Path };
 `;
 
   await writeFile(join(outputsDir, `${useCaseName}Success.ts`), successContent);
@@ -549,7 +589,7 @@ async function generateDeleteUseCase(
   baseDir: string,
   config: CrudConfig,
 ): Promise<void> {
-  const { EntityName, entityName, kebabName, TOKEN_BASE } = config;
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
   const useCaseName = `Delete${EntityName}`;
   const useCaseDir = join(baseDir, `delete-${kebabName}`);
   const outputsDir = join(useCaseDir, 'outputs');
@@ -560,7 +600,7 @@ async function generateDeleteUseCase(
   // Success Output
   const successContent = `import { SuccessfullOperation } from '@root/lib';
 
-export type ${useCaseName}Payload = { id: string; deleted: boolean };
+export type ${useCaseName}Payload = { id: string; deleted: boolean; softDelete: boolean };
 
 export class ${useCaseName}Success extends SuccessfullOperation {
   constructor(
@@ -602,9 +642,9 @@ export class ${useCaseName} implements IUseCase {
     private readonly ${entityName}Service: I${EntityName}Service,
   ) {}
 
-  async execute(id: string): Promise<${useCaseName}Success> {
-    await this.${entityName}Service.delete(id);
-    const result: ${useCaseName}Payload = { id, deleted: true };
+  async execute(id: string, softDelete: boolean = true): Promise<${useCaseName}Success> {
+    await this.${entityName}Service.delete(id, softDelete);
+    const result: ${useCaseName}Payload = { id, deleted: true, softDelete };
     return new ${useCaseName}Success(result);
   }
 }
@@ -626,27 +666,45 @@ import { StatusCodes } from 'http-status-codes';
 import { inject } from '@kanian77/simple-di';
 import { ${useCaseName}, ${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN } from './${useCaseName}';
 import { ${useCaseName}Failure } from './outputs/${useCaseName}Failure';
+import { authGuard } from '@root/middlewares/authGuard';
+import { roleGuard } from '@root/middlewares/roleGuard';
+import { AdminRoleEnum } from '@root/lib';
 
-const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}Routes = new Hono();
+export const ${toCamelCase(useCaseName)}RoutesPath = '/${pluralKebab}/:id';
 
-${toCamelCase(useCaseName)}Routes.delete('/:id', async (c) => {
-  try {
-    const id = c.req.param('id');
-    const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
-    const result = await useCase.execute(id);
-    return c.json(result, StatusCodes.OK);
-  } catch (e) {
-    console.error('Error in ${toCamelCase(useCaseName)}Routes:', e);
-    return c.json(
-      new ${useCaseName}Failure('Internal Server Error'),
-      StatusCodes.INTERNAL_SERVER_ERROR,
-    );
+${toCamelCase(useCaseName)}Routes.delete(
+  '/',
+  authGuard(),
+  roleGuard([AdminRoleEnum.ADMIN]),
+  async (c) => {
+    try {
+      const id = c.req.param('id');
+
+      let softDelete = true;
+      try {
+        const body = await c.req.json();
+        if (typeof body.softDelete === 'boolean') {
+          softDelete = body.softDelete;
+        }
+      } catch (e) {
+        // Body is likely empty, default to softDelete = true
+      }
+
+      const useCase = inject<${useCaseName}>(${toUpperSnakeCase(useCaseName)}_USE_CASE_TOKEN);
+      const result = await useCase.execute(id, softDelete);
+      return c.json(result, StatusCodes.OK);
+    } catch (e) {
+      console.error('Error in ${toCamelCase(useCaseName)}Routes:', e);
+      return c.json(
+        new ${useCaseName}Failure('Internal Server Error'),
+        StatusCodes.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
-});
+);
 
-const ${toCamelCase(useCaseName)}RoutesPath = '/';
-
-export { ${toCamelCase(useCaseName)}Routes, ${toCamelCase(useCaseName)}RoutesPath };
+export { ${toCamelCase(useCaseName)}Routes as Route, ${toCamelCase(useCaseName)}RoutesPath as Path };
 `;
 
   await writeFile(join(outputsDir, `${useCaseName}Success.ts`), successContent);
@@ -754,80 +812,577 @@ async function registerInUseCaseModule(
   console.log(`Updated: src/use-case/UseCaseModule.ts`);
 }
 
-// ============ REGISTER ROUTES ============
-async function registerRoutes(
-  srcDir: string,
+// ============ E2E TESTS GENERATION ============
+
+async function generateCreateE2ETest(
+  baseDir: string,
   config: CrudConfig,
 ): Promise<void> {
-  const { EntityName, entityName, kebabName, pluralPascal, pluralKebab } =
-    config;
-  const mainRoutesPath = join(srcDir, 'main.routes.ts');
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
+  const useCaseDir = join(baseDir, `create-${kebabName}`);
+  const testContent = `import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { inject, bootstrap, Module } from '@kanian77/simple-di';
+import { getDb } from 'db/getDb';
+import * as schema from '@root/schema';
+import {
+  createOneSignedUpUser,
+  deleteCreatedSignedUsers,
+} from '@root/lib/functions/test-related/createSignedUpUser';
+import {
+  create${EntityName}Routes,
+  create${EntityName}RoutesPath,
+} from './create${EntityName}Routes';
+import { ${EntityName}Module } from '@root/core/${kebabName}/${EntityName}Module';
+import { UserModule } from '@root/core/user/UserModule';
+import { Create${EntityName}Module } from './Create${EntityName}';
+import { getDbModule } from 'db/getDbModule';
+import { getConfigModule } from 'config/getConfigModule';
+import { EnvFileNames } from '@root/lib';
+import { StatusCodes } from 'http-status-codes';
+import { getNewTestServer } from '@root/lib/functions/test-related/getNewTestServer';
+import { USER_REPOSITORY_INTERFACE } from '@root/core/user/IUserRepository';
+import type { UserRepository } from '@root/core/user/UserRepository';
+import { AdminRoleEnum } from '@root/lib/types/AdminRoleEnum';
+import { UserTypeEnum } from '@root/lib/types/UserTypeEnum';
+import { ${EntityName}Repository } from '@root/core/${kebabName}/${EntityName}Repository';
+import { ${TOKEN_BASE}_REPOSITORY_INTERFACE } from '@root/core/${kebabName}/I${EntityName}Repository';
+import { randomUUID } from 'crypto';
 
-  if (!existsSync(mainRoutesPath)) {
-    console.warn('Warning: src/main.routes.ts not found');
-    return;
-  }
+describe('Create${EntityName} Use Case', () => {
+  let userRepository: UserRepository;
+  let ${entityName}Repository: ${EntityName}Repository;
 
-  let content = await readFile(mainRoutesPath, 'utf8');
+  const clear = async (db: ReturnType<typeof getDb>) => {
+    await db.delete(schema.${entityName}Schema).execute();
+    await db.delete(schema.userSchema).execute();
+  };
 
-  // Import all route handlers
-  const routeImports = `import { create${EntityName}Routes } from './use-case/${kebabName}/create-${kebabName}/create${EntityName}Routes';
-import { update${EntityName}Routes } from './use-case/${kebabName}/update-${kebabName}/update${EntityName}Routes';
-import { get${EntityName}Routes } from './use-case/${kebabName}/get-${kebabName}/get${EntityName}Routes';
-import { list${pluralPascal}Routes } from './use-case/${kebabName}/list-${pluralKebab}/list${pluralPascal}Routes';
-import { delete${EntityName}Routes } from './use-case/${kebabName}/delete-${kebabName}/delete${EntityName}Routes';`;
+  beforeAll(async () => {
+    bootstrap(
+      new Module({
+        imports: [
+          getConfigModule(EnvFileNames.TESTING),
+          getDbModule(EnvFileNames.TESTING),
+          UserModule,
+          ${EntityName}Module,
+          Create${EntityName}Module,
+        ],
+      }),
+    );
+    userRepository = inject(USER_REPOSITORY_INTERFACE);
+    ${entityName}Repository = inject(${TOKEN_BASE}_REPOSITORY_INTERFACE);
+  });
 
-  if (content.includes(`create${EntityName}Routes`)) {
-    return; // Already registered
-  }
+  afterEach(async () => {
+    await getDb().delete(schema.${entityName}Schema).execute();
+    await deleteCreatedSignedUsers(userRepository);
+  });
 
-  // Add imports after last import
-  const lastImportIndex = content.lastIndexOf('import ');
-  if (lastImportIndex !== -1) {
-    let searchPos = lastImportIndex;
-    while (searchPos < content.length) {
-      if (content[searchPos] === ';') {
-        content =
-          content.slice(0, searchPos + 1) +
-          '\n' +
-          routeImports +
-          content.slice(searchPos + 1);
-        break;
-      }
-      searchPos++;
-    }
-  }
+  afterAll(async () => {
+    await clear(getDb());
+  });
 
-  // Add route registrations before export
-  const routeRegistrations = `
-// ${EntityName} CRUD routes
-const ${entityName}Routes = new Hono();
-${entityName}Routes.route('/', create${EntityName}Routes);
-${entityName}Routes.route('/', update${EntityName}Routes);
-${entityName}Routes.route('/', get${EntityName}Routes);
-${entityName}Routes.route('/', list${pluralPascal}Routes);
-${entityName}Routes.route('/', delete${EntityName}Routes);
-mainRoutes.route('/${pluralKebab}', ${entityName}Routes);
+  it('should create an entity successfully', async () => {
+    const { user, token } = await createOneSignedUpUser(userRepository, {
+      userType: UserTypeEnum.ADMIN,
+      role: AdminRoleEnum.ADMIN,
+    });
+
+    const server = getNewTestServer({
+      [create${EntityName}RoutesPath]: {
+        handler: create${EntityName}Routes,
+      },
+    });
+
+    const payload = { name: 'Test ${EntityName}' };
+    const response = await server
+      .request()
+      .post(create${EntityName}RoutesPath)
+      .set('Authorization', \`Bearer \${token}\`)
+      .send(payload);
+
+    expect(response.status).toBe(StatusCodes.CREATED);
+    const body = response.body as any;
+    expect(body.result).toBeDefined();
+    expect(body.result.name).toBe('Test ${EntityName}');
+    expect(body.result.createdBy).toBe(user.id);
+
+    await server.close();
+  });
+
+  it('should return 401 Unauthorized without auth block', async () => {
+    const server = getNewTestServer({
+      [create${EntityName}RoutesPath]: {
+        handler: create${EntityName}Routes,
+      },
+    });
+
+    const response = await server
+      .request()
+      .post(create${EntityName}RoutesPath)
+      .send({ name: 'Test ${EntityName}' });
+
+    expect(response.status).toBe(StatusCodes.UNAUTHORIZED);
+
+    await server.close();
+  });
+});
 `;
-
-  const exportIndex = content.indexOf('export { mainRoutes }');
-  if (exportIndex !== -1) {
-    content =
-      content.slice(0, exportIndex) +
-      routeRegistrations +
-      '\n' +
-      content.slice(exportIndex);
-  }
-
-  // Check if Hono is imported
-  if (
-    !content.includes('import { Hono }') &&
-    !content.includes('import {Hono}')
-  ) {
-    // Add Hono import at top if not present
-    content = "import { Hono } from 'hono';\n" + content;
-  }
-
-  await writeFile(mainRoutesPath, content);
-  console.log(`Updated: src/main.routes.ts with ${EntityName} CRUD routes`);
+  await writeFile(
+    join(useCaseDir, `Create${EntityName}.e2e.spec.ts`),
+    testContent,
+  );
 }
+
+async function generateUpdateE2ETest(
+  baseDir: string,
+  config: CrudConfig,
+): Promise<void> {
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
+  const useCaseDir = join(baseDir, `update-${kebabName}`);
+  const testContent = `import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { inject, bootstrap, Module } from '@kanian77/simple-di';
+import { getDb } from 'db/getDb';
+import * as schema from '@root/schema';
+import {
+  createOneSignedUpUser,
+  deleteCreatedSignedUsers,
+} from '@root/lib/functions/test-related/createSignedUpUser';
+import {
+  update${EntityName}Routes,
+  update${EntityName}RoutesPath,
+} from './update${EntityName}Routes';
+import { ${EntityName}Module } from '@root/core/${kebabName}/${EntityName}Module';
+import { UserModule } from '@root/core/user/UserModule';
+import { Update${EntityName}Module } from './Update${EntityName}';
+import { getDbModule } from 'db/getDbModule';
+import { getConfigModule } from 'config/getConfigModule';
+import { EnvFileNames } from '@root/lib';
+import { StatusCodes } from 'http-status-codes';
+import { getNewTestServer } from '@root/lib/functions/test-related/getNewTestServer';
+import { USER_REPOSITORY_INTERFACE } from '@root/core/user/IUserRepository';
+import type { UserRepository } from '@root/core/user/UserRepository';
+import { AdminRoleEnum } from '@root/lib/types/AdminRoleEnum';
+import { UserTypeEnum } from '@root/lib/types/UserTypeEnum';
+import { ${EntityName}Repository } from '@root/core/${kebabName}/${EntityName}Repository';
+import { ${TOKEN_BASE}_REPOSITORY_INTERFACE } from '@root/core/${kebabName}/I${EntityName}Repository';
+import { randomUUID } from 'crypto';
+
+describe('Update${EntityName} Use Case', () => {
+  let userRepository: UserRepository;
+  let ${entityName}Repository: ${EntityName}Repository;
+
+  const clear = async (db: ReturnType<typeof getDb>) => {
+    await db.delete(schema.${entityName}Schema).execute();
+    await db.delete(schema.userSchema).execute();
+  };
+
+  beforeAll(async () => {
+    bootstrap(
+      new Module({
+        imports: [
+          getConfigModule(EnvFileNames.TESTING),
+          getDbModule(EnvFileNames.TESTING),
+          UserModule,
+          ${EntityName}Module,
+          Update${EntityName}Module,
+        ],
+      }),
+    );
+    userRepository = inject(USER_REPOSITORY_INTERFACE);
+    ${entityName}Repository = inject(${TOKEN_BASE}_REPOSITORY_INTERFACE);
+  });
+
+  afterEach(async () => {
+    await getDb().delete(schema.${entityName}Schema).execute();
+    await deleteCreatedSignedUsers(userRepository);
+  });
+
+  afterAll(async () => {
+    await clear(getDb());
+  });
+
+  it('should update an entity successfully', async () => {
+    const { user, token } = await createOneSignedUpUser(userRepository, {
+      userType: UserTypeEnum.ADMIN,
+      role: AdminRoleEnum.ADMIN,
+    });
+
+    const targetId = randomUUID();
+    await ${entityName}Repository.create({ id: targetId, name: 'Test ${EntityName}' } as any);
+
+    const server = getNewTestServer({
+      [update${EntityName}RoutesPath]: { handler: update${EntityName}Routes },
+    });
+
+    const pathReplaced = update${EntityName}RoutesPath.replace(':id', targetId);
+    const response = await server
+      .request()
+      .put(pathReplaced)
+      .set('Authorization', \`Bearer \${token}\`)
+      .send({ name: 'Updated ${EntityName}' });
+
+    expect(response.status).toBe(StatusCodes.OK);
+    const body = response.body as any;
+    expect(body.result.name).toBe('Updated ${EntityName}');
+    expect(body.result.updatedBy).toBe(user.id);
+
+    await server.close();
+  });
+});
+`;
+  await writeFile(
+    join(useCaseDir, `Update${EntityName}.e2e.spec.ts`),
+    testContent,
+  );
+}
+
+async function generateGetE2ETest(
+  baseDir: string,
+  config: CrudConfig,
+): Promise<void> {
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
+  const useCaseDir = join(baseDir, `get-${kebabName}`);
+  const testContent = `import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { inject, bootstrap, Module } from '@kanian77/simple-di';
+import { getDb } from 'db/getDb';
+import * as schema from '@root/schema';
+import {
+  createOneSignedUpUser,
+  deleteCreatedSignedUsers,
+} from '@root/lib/functions/test-related/createSignedUpUser';
+import {
+  get${EntityName}Routes,
+  get${EntityName}RoutesPath,
+} from './get${EntityName}Routes';
+import { ${EntityName}Module } from '@root/core/${kebabName}/${EntityName}Module';
+import { UserModule } from '@root/core/user/UserModule';
+import { Get${EntityName}Module } from './Get${EntityName}';
+import { getDbModule } from 'db/getDbModule';
+import { getConfigModule } from 'config/getConfigModule';
+import { EnvFileNames } from '@root/lib';
+import { StatusCodes } from 'http-status-codes';
+import { getNewTestServer } from '@root/lib/functions/test-related/getNewTestServer';
+import { USER_REPOSITORY_INTERFACE } from '@root/core/user/IUserRepository';
+import type { UserRepository } from '@root/core/user/UserRepository';
+import { AdminRoleEnum } from '@root/lib/types/AdminRoleEnum';
+import { UserTypeEnum } from '@root/lib/types/UserTypeEnum';
+import { ${EntityName}Repository } from '@root/core/${kebabName}/${EntityName}Repository';
+import { ${TOKEN_BASE}_REPOSITORY_INTERFACE } from '@root/core/${kebabName}/I${EntityName}Repository';
+import { randomUUID } from 'crypto';
+
+describe('Get${EntityName} Use Case', () => {
+  let userRepository: UserRepository;
+  let ${entityName}Repository: ${EntityName}Repository;
+
+  const clear = async (db: ReturnType<typeof getDb>) => {
+    await db.delete(schema.${entityName}Schema).execute();
+    await db.delete(schema.userSchema).execute();
+  };
+
+  beforeAll(async () => {
+    bootstrap(
+      new Module({
+        imports: [
+          getConfigModule(EnvFileNames.TESTING),
+          getDbModule(EnvFileNames.TESTING),
+          UserModule,
+          ${EntityName}Module,
+          Get${EntityName}Module,
+        ],
+      }),
+    );
+    userRepository = inject(USER_REPOSITORY_INTERFACE);
+    ${entityName}Repository = inject(${TOKEN_BASE}_REPOSITORY_INTERFACE);
+  });
+
+  afterEach(async () => {
+    await getDb().delete(schema.${entityName}Schema).execute();
+    await deleteCreatedSignedUsers(userRepository);
+  });
+
+  afterAll(async () => {
+    await clear(getDb());
+  });
+
+  it('should get an entity successfully', async () => {
+    const { user, token } = await createOneSignedUpUser(userRepository, {
+      userType: UserTypeEnum.ADMIN,
+      role: AdminRoleEnum.ADMIN,
+    });
+
+    const targetId = randomUUID();
+    await ${entityName}Repository.create({ id: targetId, name: 'Test ${EntityName}' } as any);
+
+    const server = getNewTestServer({
+      [get${EntityName}RoutesPath]: { handler: get${EntityName}Routes },
+    });
+
+    const pathReplaced = get${EntityName}RoutesPath.replace(':id', targetId);
+    const response = await server
+      .request()
+      .get(pathReplaced)
+      .set('Authorization', \`Bearer \${token}\`);
+
+    expect(response.status).toBe(StatusCodes.OK);
+    const body = response.body as any;
+    expect(body.result.id).toBe(targetId);
+
+    await server.close();
+  });
+});
+`;
+  await writeFile(
+    join(useCaseDir, `Get${EntityName}.e2e.spec.ts`),
+    testContent,
+  );
+}
+
+async function generateListE2ETest(
+  baseDir: string,
+  config: CrudConfig,
+): Promise<void> {
+  const {
+    EntityName,
+    entityName,
+    kebabName,
+    TOKEN_BASE,
+    pluralKebab,
+    pluralPascal,
+  } = config;
+  const useCaseDir = join(baseDir, `list-${pluralKebab}`);
+  const testContent = `import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { inject, bootstrap, Module } from '@kanian77/simple-di';
+import { getDb } from 'db/getDb';
+import * as schema from '@root/schema';
+import {
+  createOneSignedUpUser,
+  deleteCreatedSignedUsers,
+} from '@root/lib/functions/test-related/createSignedUpUser';
+import {
+  list${pluralPascal}Routes,
+  list${pluralPascal}RoutesPath,
+} from './list${pluralPascal}Routes';
+import { ${EntityName}Module } from '@root/core/${kebabName}/${EntityName}Module';
+import { UserModule } from '@root/core/user/UserModule';
+import { List${pluralPascal}Module } from './List${pluralPascal}';
+import { getDbModule } from 'db/getDbModule';
+import { getConfigModule } from 'config/getConfigModule';
+import { EnvFileNames } from '@root/lib';
+import { StatusCodes } from 'http-status-codes';
+import { getNewTestServer } from '@root/lib/functions/test-related/getNewTestServer';
+import { USER_REPOSITORY_INTERFACE } from '@root/core/user/IUserRepository';
+import type { UserRepository } from '@root/core/user/UserRepository';
+import { AdminRoleEnum } from '@root/lib/types/AdminRoleEnum';
+import { UserTypeEnum } from '@root/lib/types/UserTypeEnum';
+import { ${EntityName}Repository } from '@root/core/${kebabName}/${EntityName}Repository';
+import { ${TOKEN_BASE}_REPOSITORY_INTERFACE } from '@root/core/${kebabName}/I${EntityName}Repository';
+import { randomUUID } from 'crypto';
+
+describe('List${pluralPascal} Use Case', () => {
+  let userRepository: UserRepository;
+  let ${entityName}Repository: ${EntityName}Repository;
+
+  const clear = async (db: ReturnType<typeof getDb>) => {
+    await db.delete(schema.${entityName}Schema).execute();
+    await db.delete(schema.userSchema).execute();
+  };
+
+  beforeAll(async () => {
+    bootstrap(
+      new Module({
+        imports: [
+          getConfigModule(EnvFileNames.TESTING),
+          getDbModule(EnvFileNames.TESTING),
+          UserModule,
+          ${EntityName}Module,
+          List${pluralPascal}Module,
+        ],
+      }),
+    );
+    userRepository = inject(USER_REPOSITORY_INTERFACE);
+    ${entityName}Repository = inject(${TOKEN_BASE}_REPOSITORY_INTERFACE);
+  });
+
+  afterEach(async () => {
+    await getDb().delete(schema.${entityName}Schema).execute();
+    await deleteCreatedSignedUsers(userRepository);
+  });
+
+  afterAll(async () => {
+    await clear(getDb());
+  });
+
+  it('should list all entities successfully', async () => {
+    const { user, token } = await createOneSignedUpUser(userRepository, {
+      userType: UserTypeEnum.ADMIN,
+      role: AdminRoleEnum.ADMIN,
+    });
+
+    await ${entityName}Repository.create({ id: randomUUID(), name: 'Test ${EntityName} 1' } as any);
+    await ${entityName}Repository.create({ id: randomUUID(), name: 'Test ${EntityName} 2' } as any);
+
+    const server = getNewTestServer({
+      [list${pluralPascal}RoutesPath]: { handler: list${pluralPascal}Routes },
+    });
+
+    const response = await server
+      .request()
+      .get(list${pluralPascal}RoutesPath)
+      .set('Authorization', \`Bearer \${token}\`);
+
+    expect(response.status).toBe(StatusCodes.OK);
+    const body = response.body as any;
+    expect(Array.isArray(body.result)).toBe(true);
+
+    await server.close();
+  });
+});
+`;
+  await writeFile(
+    join(useCaseDir, `List${pluralPascal}.e2e.spec.ts`),
+    testContent,
+  );
+}
+
+async function generateDeleteE2ETest(
+  baseDir: string,
+  config: CrudConfig,
+): Promise<void> {
+  const { EntityName, entityName, kebabName, TOKEN_BASE, pluralKebab } = config;
+  const useCaseDir = join(baseDir, `delete-${kebabName}`);
+  const testContent = `import { afterAll, afterEach, beforeAll, describe, expect, it } from 'bun:test';
+import { inject, bootstrap, Module } from '@kanian77/simple-di';
+import { getDb } from 'db/getDb';
+import * as schema from '@root/schema';
+import { eq } from 'drizzle-orm';
+import {
+  createOneSignedUpUser,
+  deleteCreatedSignedUsers,
+} from '@root/lib/functions/test-related/createSignedUpUser';
+import {
+  delete${EntityName}Routes,
+  delete${EntityName}RoutesPath,
+} from './delete${EntityName}Routes';
+import { ${EntityName}Module } from '@root/core/${kebabName}/${EntityName}Module';
+import { UserModule } from '@root/core/user/UserModule';
+import { Delete${EntityName}Module } from './Delete${EntityName}';
+import { getDbModule } from 'db/getDbModule';
+import { getConfigModule } from 'config/getConfigModule';
+import { EnvFileNames } from '@root/lib';
+import { StatusCodes } from 'http-status-codes';
+import { getNewTestServer } from '@root/lib/functions/test-related/getNewTestServer';
+import { USER_REPOSITORY_INTERFACE } from '@root/core/user/IUserRepository';
+import type { UserRepository } from '@root/core/user/UserRepository';
+import { AdminRoleEnum } from '@root/lib/types/AdminRoleEnum';
+import { UserTypeEnum } from '@root/lib/types/UserTypeEnum';
+import { ${EntityName}Repository } from '@root/core/${kebabName}/${EntityName}Repository';
+import { ${TOKEN_BASE}_REPOSITORY_INTERFACE } from '@root/core/${kebabName}/I${EntityName}Repository';
+import { randomUUID } from 'crypto';
+
+describe('Delete${EntityName} Use Case', () => {
+  let userRepository: UserRepository;
+  let ${entityName}Repository: ${EntityName}Repository;
+
+  const clear = async (db: ReturnType<typeof getDb>) => {
+    await db.delete(schema.${entityName}Schema).execute();
+    await db.delete(schema.userSchema).execute();
+  };
+
+  beforeAll(async () => {
+    bootstrap(
+      new Module({
+        imports: [
+          getConfigModule(EnvFileNames.TESTING),
+          getDbModule(EnvFileNames.TESTING),
+          UserModule,
+          ${EntityName}Module,
+          Delete${EntityName}Module,
+        ],
+      }),
+    );
+    userRepository = inject(USER_REPOSITORY_INTERFACE);
+    ${entityName}Repository = inject(${TOKEN_BASE}_REPOSITORY_INTERFACE);
+  });
+
+  afterEach(async () => {
+    await getDb().delete(schema.${entityName}Schema).execute();
+    await deleteCreatedSignedUsers(userRepository);
+  });
+
+  afterAll(async () => {
+    await clear(getDb());
+  });
+
+  it('should soft delete an entity successfully', async () => {
+    const { user, token } = await createOneSignedUpUser(userRepository, {
+      userType: UserTypeEnum.ADMIN,
+      role: AdminRoleEnum.ADMIN,
+    });
+
+    const targetIdSoft = randomUUID();
+    await ${entityName}Repository.create({ id: targetIdSoft, name: 'Test ${EntityName}' } as any);
+
+    const server = getNewTestServer({
+      [delete${EntityName}RoutesPath]: { handler: delete${EntityName}Routes },
+    });
+
+    const pathReplaced = delete${EntityName}RoutesPath.replace(':id', targetIdSoft);
+    const response = await server
+      .request()
+      .delete(pathReplaced)
+      .set('Authorization', \`Bearer \${token}\`);
+
+    expect(response.status).toBe(StatusCodes.OK);
+
+    const dbRecord = await getDb()
+      .select()
+      .from(schema.${entityName}Schema)
+      .where(eq(schema.${entityName}Schema.id, targetIdSoft))
+      .execute();
+    expect(dbRecord.length).toBe(1);
+    expect((dbRecord[0] as any).deleted).toBe(true);
+
+    await server.close();
+  });
+
+  it('should hard delete an entity successfully', async () => {
+    const { user, token } = await createOneSignedUpUser(userRepository, {
+      userType: UserTypeEnum.ADMIN,
+      role: AdminRoleEnum.ADMIN,
+    });
+
+    const targetIdHard = randomUUID();
+    await ${entityName}Repository.create({ id: targetIdHard, name: 'Test ${EntityName}' } as any);
+
+    const server = getNewTestServer({
+      [delete${EntityName}RoutesPath]: { handler: delete${EntityName}Routes },
+    });
+
+    const pathReplaced = delete${EntityName}RoutesPath.replace(':id', targetIdHard);
+    const response = await server
+      .request()
+      .delete(pathReplaced)
+      .set('Authorization', \`Bearer \${token}\`)
+      .send({ softDelete: false });
+
+    expect(response.status).toBe(StatusCodes.OK);
+
+    const dbRecord = await getDb()
+      .select()
+      .from(schema.${entityName}Schema)
+      .where(eq(schema.${entityName}Schema.id, targetIdHard))
+      .execute();
+    expect(dbRecord.length).toBe(0);
+
+    await server.close();
+  });
+});
+`;
+  await writeFile(
+    join(useCaseDir, `Delete${EntityName}.e2e.spec.ts`),
+    testContent,
+  );
+}
+
+// END ROUTES

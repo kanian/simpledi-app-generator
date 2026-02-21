@@ -1,12 +1,11 @@
 import 'reflect-metadata';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { mainRoutes } from '@root/main.routes';
 import { logger } from 'hono/logger';
 import { prettyJSON } from 'hono/pretty-json';
 import { CONFIG, Config } from 'config/Config';
 import { bootstrap, inject } from '@kanian77/simple-di';
-import { AppModule } from '@root/AppModule';
+import { APP, AppModule } from '@root/AppModule';
 import { getCorsOrigin } from '@root/lib/types/getCorsOrigin';
 import { getHostname } from '@root/lib/functions/getHostname';
 
@@ -15,7 +14,7 @@ console.log('Bootstrapping DI container...');
 bootstrap(AppModule);
 console.log('DI container bootstrapped.');
 
-const app = new Hono();
+const app = inject<Hono>(APP);
 console.log('created Hono');
 
 // cors to accept from origin 'http://localhost:5173'
@@ -61,7 +60,6 @@ app
     return next();
   });
 
-app.route('/', mainRoutes);
 app.use('*', logger());
 app.use('*', prettyJSON());
 

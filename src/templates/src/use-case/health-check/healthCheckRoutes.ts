@@ -4,7 +4,7 @@ import { StatusCodes } from 'http-status-codes';
 import { FailedOperation } from '@root/lib';
 import { HealthCheck, HEALTH_CHECK_USE_CASE_TOKEN } from './HealthCheck';
 
-const healthCheckRoutes = new Hono();
+export const healthCheckRoutes = new Hono();
 
 healthCheckRoutes.get('/', async (c) => {
   try {
@@ -19,5 +19,5 @@ healthCheckRoutes.get('/', async (c) => {
   }
 });
 
-const healthCheckRoutesPath = '/health';
-export { healthCheckRoutes, healthCheckRoutesPath };
+export const healthCheckRoutesPath = '/health';
+export { healthCheckRoutes as Route, healthCheckRoutesPath as Path };
