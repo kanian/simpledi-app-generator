@@ -6,7 +6,7 @@ Complete guide for using the simpledi-app-generator CLI to create and extend sim
 
 ```bash
 # Install globally
-npm install -g simpledi-app-generator
+npm install -g @kanian77/simple-di-app-generator
 
 # Create a new project
 simpledi new my-app

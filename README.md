@@ -5,7 +5,7 @@ CLI tool to generate [simple-di](https://www.npmjs.com/package/@kanian77/simple-
 ## Installation
 
 ```bash
-npm install -g simpledi-app-generator
+npm install -g @kanian77/simple-di-app-generator
 ```
 
 Or link locally for development:

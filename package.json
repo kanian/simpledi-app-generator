@@ -1,5 +1,5 @@
 {
-  "name": "simpledi-app-generator",
+  "name": "@kanian77/simple-di-app-generator",
   "version": "0.1.0",
   "description": "generates a @kanian77/simple-di app",
   "author": {
